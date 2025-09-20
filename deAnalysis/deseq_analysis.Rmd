@@ -1,0 +1,313 @@
+---
+title: "RNA-seq Differential Expression Report"
+author: "Rahi Navelkar"
+date: "`r Sys.Date()`"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: rows
+params:
+  input_file: "default.xlsx"
+  output_file: "default.html"
+---
+
+```{r setup, include=FALSE, echo=FALSE}
+library(readr)
+library(dplyr)
+library(tibble)
+library(tximport)
+library(DESeq2)
+library(GenomicFeatures)
+library(pheatmap)
+library(AnnotationHub)
+library(AnnotationDbi)
+library(ensembldb)
+library(dplyr)
+library(clusterProfiler)
+library(org.Mm.eg.db)
+library(enrichplot)
+library(readxl)
+library(DT)
+library(patchwork)
+library(ggplotify)
+```
+
+```{r readMetadata, include= FALSE, echo=FALSE}
+
+metadataSampleFile <- params$input_file
+samples <- read_excel(metadataSampleFile, sheet = "samples")
+samples_meta <- read_excel(metadataSampleFile, sheet = "details")
+
+samples <- as.data.frame(samples)
+allConstrasts <- samples_meta$contrast_name
+
+for (i in seq_along(allConstrasts)){
+  if (type(samples[allConstrasts[i]]) == "character"){
+    samples[allConstrasts[i]] <- factor(samples[,allConstrasts[i]])
+    samples[allConstrasts[i]] <- relevel(samples[,allConstrasts[i]], ref = samples_meta$contrast_base[i])
+  }
+}
+
+#generate tx2gene file
+txdb <- txdbmaker::makeTxDbFromGFF(samples_meta$gtfFile[1])
+k <- AnnotationDbi::keys(txdb, keytype = "TXNAME")
+tx2gene <- AnnotationDbi::select(txdb, keys = k, keytype = "TXNAME", columns = "GENEID")
+
+#add sample names to all filepaths
+files <- setNames(samples$files, samples$samples)
+
+```
+
+Metadata
+=====================================
+
+### Metadata
+
+```{r showMetadata}
+
+datatable(samples, caption = "Metadata of the Study")
+
+```
+
+```{r sanity-check, include= FALSE,echo=FALSE}
+
+#File sanity check
+filecheck <- all(file.exists(samples$files))
+ifelse(filecheck,"All quant files present", "One or more quant file not present")
+
+if (dir.exists(samples_meta$resultsFolder[1]) == FALSE){
+  dir.create(samples_meta$resultsFolder[1])
+}
+
+```
+
+```{r deseq, include=FALSE, echo=FALSE}
+#generate txi object
+txi <- tximport(files, type = "salmon", tx2gene = tx2gene, ignoreAfterBar = TRUE)
+
+#Build deseq2 object
+dds <- DESeqDataSetFromTximport(txi = txi, colData = samples, design = as.formula(samples_meta$design_formula[1]))
+dds <- DESeq(dds)
+
+#get all combos/coefficents used
+resultsNames(dds)
+
+#get results for different contrasts/conditions
+results <- list()
+
+for (coef in 2:length(resultsNames(dds))){
+  resContrast <- resultsNames(dds)[coef]
+  results[[resContrast]] <- lfcShrink(dds, coef=resultsNames(dds)[coef], type="apeglm")
+}
+
+topGenes <- list()
+
+for(i in 1:length(results)){
+  res <- results[[i]]
+  res_clean <- res[!is.na(res$padj), ]
+  top <- head(res_clean[order(res_clean$padj), 
+                       c("log2FoldChange", "lfcSE", "pvalue", "padj")], 5)
+  topGenes[[names(results)[i]]] <- rownames(top)
+  }
+
+bestGenes <- as.data.frame(topGenes)
+write.csv(bestGenes,paste(samples_meta$resultsFolder[1],"topGenes.csv",sep = ""),row.names = FALSE)
+
+```
+
+Plot MAs
+=====================================
+
+### MA plots for each contrast
+
+```{r contrasts, fig.width=15, fig.height=15}
+
+# names(results) should match resultsNames(dds)[-1]
+res_names <- resultsNames(dds)[-1]  # skip intercept (index 1)
+
+# build a list of ggplot-wrapped MA plots (consistent y-limits + titles)
+ma_plots <- lapply(res_names, function(nm) {
+  as.ggplot(function() {
+    plotMA(results[[nm]], ylim = c(-3, 3), main = nm)
+  })
+})
+names(ma_plots) <- res_names
+
+# combine into one figure (2 columns; tweak ncol as you like)
+combined_ma <- wrap_plots(ma_plots, ncol = 2)
+
+combined_ma
+```
+```{r qc, include=FALSE, echo=FALSE}
+
+vsd <- vst(dds, blind = FALSE)
+
+#Generate heatmaps
+sampleDists <- dist(t(assay(vsd)))
+sampleDistMatrix <- as.matrix(sampleDists)
+ann <- as.data.frame(colData(vsd)[, samples_meta$contrast_name])
+ann <- ann[colnames(sampleDistMatrix), , drop = FALSE]
+
+#plot single genes for specific variable of the design
+#plotCounts(dds, gene = "ENSMUSG00000000028.14", intgroup=c("condition"))
+
+```
+
+Visuals-PCA
+=====================================
+
+### PCA
+
+```{r PCA, echo=FALSE}
+
+if (length(allConstrasts) == 2){
+  plotPCA(vsd, intgroup = samples_meta$contrast_name)
+}
+
+```
+
+Visuals-HeatMap
+=====================================
+
+### HeatMap
+
+```{r heatmap, echo=FALSE}
+
+if (length(allConstrasts) == 2){
+  pheatmap(sampleDistMatrix,
+         clustering_distance_rows = sampleDists,
+         clustering_distance_cols = sampleDists,
+         annotation_col = ann)
+}
+
+```
+
+Top DE genes
+=====================================
+
+```{r functionalAnalysis, echo=FALSE}
+#functional analysis
+
+ah <- AnnotationHub() # Connect to AnnotationHub
+ahquery <- query(ah, c(samples_meta$organismName[1],samples_meta$ahDatabase[1])) #Get data from specific organism from a specific data source
+ahData <- ahquery[[samples_meta$ahDatabaseAssembly[1]]] #extract annotations of the correct assembly of the organism using mouseEnsb$ah_id and mouseEnsb$title. We need the id.
+
+genes_ens <- rownames(dds) #get gene names from dds object
+if (samples_meta$geneHasVersion[1] == TRUE){
+  genes_ens <- sub("\\.\\d+$","", genes_ens) #remove version from genes_ens
+}
+
+#map ensembl genes IDs from your dds to Gene symbol and entrezid
+map_df <- ensembldb::select(ahData,
+                            keys     = genes_ens,
+                            keytype  = "GENEID",            
+                            columns  = c("SYMBOL","ENTREZID"))
+
+
+#map ensemble IDS for your top DE genes for each constrast
+bestGenesMapped <- list()
+geneIDs <- character()
+
+for (i in 1:length(colnames(bestGenes))){
+  geneIDs <- sub("\\.\\d+$","", bestGenes[[i]])
+  mappedGenes <- ensembldb::select(ahData,
+                  key = geneIDs,
+                  keytype = "GENEID",
+                  columns = c("SYMBOL", "ENTREZID","DESCRIPTION"))
+  bestGenesMapped[[colnames(bestGenes)[i]]] <- mappedGenes
+}
+
+allBestGenes <- data.frame()
+
+for (i in 1:length(bestGenesMapped)){
+  df <- bestGenesMapped[[i]]
+  df <- df %>% mutate(CONTRAST = names(bestGenesMapped)[i])
+  allBestGenes <- rbind(allBestGenes,df)
+}
+
+datatable(allBestGenes, caption = "Top 3 DE genes in different contrast(s)")
+
+```
+
+```{r generateResults, include=FALSE, echo=FALSE}
+
+#get results for one contrast, add a new column without a version and map above dataframe with 
+getVisualization <- function(contrastResults, map_df,organismShort){
+  results_df <- as.data.frame(contrastResults) %>% 
+  rownames_to_column("ENSEMBL_FULL") %>% 
+  mutate(GENEID = sub("\\.\\d+$","", ENSEMBL_FULL)) %>% left_join(map_df, by = "GENEID")
+  
+  #get all the entrezid's from the resuly contrast           
+  gene_universe <- results_df %>%
+    dplyr::filter(!is.na(ENTREZID)) %>%
+    distinct(ENTREZID) %>%
+    pull(ENTREZID) %>%
+    as.character()
+  
+  #Getting statistically genes which have padj less than 0.05, log2FC more than 1 (-+) and where entrezid is not NA
+  sig <- results_df %>%
+    dplyr::filter(!is.na(padj),padj < 0.05, abs(log2FoldChange) > 1, !is.na(ENTREZID)) %>%
+    distinct(ENTREZID) %>%
+    pull(ENTREZID) %>% 
+    as.character()
+  
+  # GO Biological Process
+  ego <- enrichGO(gene          = sig,
+                  universe      = gene_universe,
+                  OrgDb         = org.Mm.eg.db,
+                  keyType       = "ENTREZID",
+                  ont           = "BP",
+                  pAdjustMethod = "BH",
+                  qvalueCutoff  = 0.05,
+                  readable      = TRUE)
+  
+  ekegg <- enrichKEGG(gene          = sig,
+                      universe      = gene_universe,
+                      organism      = organismShort,
+                      pAdjustMethod = "BH",
+                      qvalueCutoff  = 0.05)
+  
+  return(list(egoDot = ego, ekeggDot = ekegg))
+  
+}
+
+```
+
+KEGG enrichment
+=====================================
+
+```{r enrichmentKegg, fill=FALSE, fig.width=20, fig.height=20}
+
+res_names <- names(results)
+allkeg <- list()
+
+for (contrast in 1:length(results)){
+  visualOut <- getVisualization(results[[contrast]], map_df, samples_meta$organismNameShort[1])
+  allkeg[[contrast]] <- as.ggplot(dotplot(visualOut$ekeggDot, showCategory = 10, title = names(results)[contrast])) 
+}
+
+names(allkeg) <- names(results)
+combined_kegg <- wrap_plots(allkeg, ncol = 2)
+
+combined_kegg
+
+```
+
+GO enrichment
+=====================================
+
+```{r enrichmentGO, fill=FALSE, fig.width=20, fig.height=20}
+
+res_names <- names(results)
+allgo <- list()
+
+for (contrast in 1:length(results)){
+  visualOut <- getVisualization(results[[contrast]], map_df, samples_meta$organismNameShort[1])
+  allgo[[contrast]] <- as.ggplot(dotplot(visualOut$egoDot, showCategory = 10, title = names(results)[contrast])) 
+}
+
+names(allgo) <- names(results)
+combined_go <- wrap_plots(allgo, ncol = 2)
+
+combined_go
+
+```
