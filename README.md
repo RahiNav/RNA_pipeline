@@ -4,7 +4,7 @@
 - Conda, Snakemake, R
 
 ## Description: 
-- This pipeline performs end-to-end RNA-seq analysis, starting from raw FASTQ files. It generates quant.sf files using Salmon and then runs a DESeq2 workflow on the quantifications to produce a comprehensive analysis report. The report, delivered in HTML format, includes MA plots, PCA plots, heatmaps, and KEGG/GO enrichment analyses. In addition, the pipeline extracts and reports the top three differentially expressed genes for each contrast (e.g., control vs. condition 1, condition 2, etc.), based on the metadata provided and generates QC reports using fastqc and multiqc software. All steps (including DESEQ2) is run in Snakemake. The user only needs to provide 1) complete metadata file e.g file in ![samples.xlsx](/metadata/samples_example.xlsx), 2)required raw and reference files and 3) updated ![config.yaml] file to reflect the names and path of the files. The results will be generated in /results folder (see organiation below) and the DESeq2 analysis and KEGG and GO enrichement results are produced in a HTML report e.g report can be viewed ![here](/results/deseq/deseq_analysis_example.html)
+- This pipeline performs end-to-end RNA-seq analysis, starting from raw FASTQ files. It generates quant.sf files using Salmon and then runs a DESeq2 workflow on the quantifications to produce a comprehensive analysis report. The report, delivered in HTML format, includes MA plots, PCA plots, heatmaps, and KEGG/GO enrichment analyses. In addition, the pipeline extracts and reports the top three differentially expressed genes for each contrast (e.g., control vs. condition 1, condition 2, etc.). All steps (including DESeq2) is run in Snakemake. The user only needs to provide 1) complete metadata file e.g file in [samples.xlsx](/metadata/samples_example.xlsx), 2)required raw and reference files and 3) updated [config.yaml] file to reflect the names and path of the files. The results will be generated in /results folder (see organization below) and the DESeq2 analysis and KEGG and GO enrichement results are produced in a HTML report. Example report can be viewed [here](/results/deseq/deseq_analysis_example.html)
 
 ### Results structure:
 - /results
@@ -71,7 +71,7 @@ conda activate {enviroment_name}  #snakemake-test-1
  
 ### 9. Organize/Download/Create needed files
 
-- Metadata file: A excel file with metadata labelled as metadata.xlsx in metadata/ folder. Example of metadata file added here /metadata/samples_example.xlsx
+- Metadata file: A excel file with metadata labelled as metadata.xlsx in metadata/ folder. Example of metadata file added [here](/metadata/samples_example.xlsx)
 - Raw files : Paired or single fastq files in raw_files/
 - Reference files : gtf file and transcript file in ref_files/
 - Intermediate file: Salmon index file in ref_files/
@@ -115,5 +115,6 @@ snakemake --rerun-triggers mtime
 ```
 ### Sources:
 > https://hbctraining.github.io/Intro-to-rnaseq-fasrc-salmon-flipped/schedule/links-to-lessons.html
+> https://snakemake.readthedocs.io/en/stable/tutorial/tutorial.html
 
 
