@@ -1,29 +1,37 @@
-# Downstream end-to-end RNA-seq pipeline (expression quantification + differential expression)
+# Downstream end-to-end RNA-seq analysis pipeline (expression quantification + differential expression)
 
 ## Software:
 - Conda, Snakemake, R
 
 ## Description: 
-- Runs end-to-end RNA-seq pipeline and produces quant.sf files from fastq files and runs DESeq2 pipeline on the quant files to produce analysis report which inlcude MA plots, PCA plot, heatmaps and KEGG and GO enrichment in form of HTML. It also produces a list of top 3 genes differentially expressed for each contrast (control vs condition 1.. and so on) based on the metadata provided.
+- This pipeline performs end-to-end RNA-seq analysis, starting from raw FASTQ files. It generates quant.sf files using Salmon and then runs a DESeq2 workflow on the quantifications to produce a comprehensive analysis report. The report, delivered in HTML format, includes MA plots, PCA plots, heatmaps, and KEGG/GO enrichment analyses. In addition, the pipeline extracts and reports the top three differentially expressed genes for each contrast (e.g., control vs. condition 1, condition 2, etc.), based on the metadata provided and generates QC reports using fastqc and multiqc software. All steps (including DESEQ2) is run in Snakemake. The user only needs to provide 1) complete metadata file e.g file in ![samples.xlsx](/metadata/samples_example.xlsx), 2)required raw and reference files and 3) updated ![config.yaml] file to reflect the names and path of the files. The results will be generated in /results folder (see organiation below) and the DESeq2 analysis and KEGG and GO enrichement results are produced in a HTML report e.g report can be viewed ![here](/results/deseq/deseq_analysis_example.html)
 
-### Pipeline Overview:
-fastq > fastqc > multiqc > quant expression > DESeq2 > multiple plots (PCA, heatmap, MA) + GO/KEGG enrichment
+### Results structure:
+- /results
+    - /fastqc  
+    - /multiqc 
+    - /salmon
+    - /ora
+    - /deseq
 
-### Steps:
+## Pipeline Overview:
+![Overview](/images/Overview.png)
 
-### Download miniforge
+## Steps:
+
+### 1. Download miniforge
 ```
 $curl -L https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-MacOSX-x86_64.sh -o Miniforge3-MacOSX-x86_64.sh
 $bash Miniforge3-MacOSX-x86_64.sh
 ```
 
-### Clone repository
+### 2. Clone repository
 
 ```
 git clone <this-repo>
 ```
 
-### Set up a pyenv environment inside the folder
+### 3. Set up a pyenv environment inside the folder
 ```
 pyenv virtualenv <python version> <virtual envs name> 
 pyenv local <virtual envs name>
@@ -32,64 +40,69 @@ pyenv local <virtual envs name>
 > pyenv can be installed from [here](https://github.com/pyenv/pyenv/blob/master/README.md#installation)
 
 
-### Create environment.yaml file
+### 4. Editing existing environment.yaml file (if needed).
 ```
 vi environment.yaml 
 ```
 > [!NOTE]
-> Provided enviroment.yaml file already has listed all the packages needed for this pipeline to run. More packages can be added to the same enviromental.yaml file.
+> Provided enviroment.yaml file already has all the packages needed for this pipeline to run. More packages can be added to the same enviromental.yaml file.
 
-### Activate base
+### 5. Activate base
 ```
 conda activate base
 ```
 
-### Install mamba
+### 6. Install mamba
 ```
 conda install -n base -c conda-forge mamba
 ```
 
-### Create a new environment in mamba and install dependencies using enviroment.yaml file
+### 7. Create a new environment in mamba and install dependencies using enviroment.yaml file
 ```
 mamba env create --name {enviroment_name} --file environment.yaml
 ```
 
-### Activate enviroment
+### 8. Activate enviroment
 ```
 conda activate {enviroment_name}  #snakemake-test-1
 ```
 > [!NOTE]
 > To view all existing environments in conda use $conda info --envs
  
-### Organize/Download/Create needed files
+### 9. Organize/Download/Create needed files
 
-> Metadata file: A excel file with metadata labelled as metadata.xlsx in metadata/ folder. Example of metadata file added here /metadata/samples_example.xlsx
-> Raw files : Paired or single fastq files in raw_files/
-> Reference files : gtf file and transcript file in ref_files/
-> [!Note]
-> Please make sure that the genome assembly of raw fast files matched the reference files 
-> Intermediate file: Salmon index file in ref_files/
+- Metadata file: A excel file with metadata labelled as metadata.xlsx in metadata/ folder. Example of metadata file added here /metadata/samples_example.xlsx
+- Raw files : Paired or single fastq files in raw_files/
+- Reference files : gtf file and transcript file in ref_files/
+- Intermediate file: Salmon index file in ref_files/
 > [!Note]
 > To generate Salmon index file please use the bash script from /generate_references
 
-### Do a dry-run
+### 10. Update config file
+
+```
+vi config.yaml
+```
+> Update the necessary path for required paths and add sample names. 
+
+### 10. Do a dry-run
 ```
 snakemake -n
 ```   
 > Correct any errors or open issues for any format errors
 
-### Run Snakemake 
+### 11. Run Snakemake 
 ```
-snakemake --cores <no. of cores>
+snakemake --cores <no. of cores> #e.g. snakemake --cores 6
 ```
 > [!Note]
-> If running on local system as oppose to cloud don't use higher cores. For e.g if your local system has 12 cores, specify 6 cores to avaoi overloading your system and crashing. However to use all available cores you can use --cores "all"
+> If running on local system as oppose to cloud don't use higher number cores. For e.g if your local system has 12 cores, specify 6 cores to avoid overloading your system and crashing. To use all available cores use --cores "all"
 
+## Other helpful commands
 ### To create a dag of the snakemake workflow. 
 ```
 snakemake --dag | dot -Tsvg > dag.svg
 ```
-
 ### To run only one rule in snakemake. 
 ```
 snakemake --allowed-rules {rulename} 
@@ -100,6 +113,7 @@ snakemake --allowed-rules {rulename}
 snakemake --rerun-triggers mtime
 #useful when you have updated metadata of the snakefile but want to avoid rerunning the rules
 ```
-
+### Sources:
+> https://hbctraining.github.io/Intro-to-rnaseq-fasrc-salmon-flipped/schedule/links-to-lessons.html
 
 

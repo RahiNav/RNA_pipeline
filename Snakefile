@@ -26,7 +26,7 @@ rule runMultiqc:
     shell:
         "multiqc {params.fastqc_dir} -o {params.multiqc_dir}"                     
 
-rule salmon_quant:
+rule salmon_quant_single:
     input:
         multiqc_report = "results/multiqc/multiqc_report.html",
         fa = lambda wildcards: f"{config['RAW_FILE_FOLDER']}/{wildcards.sample}.fastq.gz",
