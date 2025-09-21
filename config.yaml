@@ -2,19 +2,19 @@
 # References = ref-files/
 # Raw files = raw-files/
 
-RAW_FILE_FOLDER: "raw_files" #e.g. raw_file folder name with path - relative to snakemake directory
-REF_FILE_FOLDER: "ref_files"
+RAW_FILE_FOLDER: "" #e.g. raw_file folder name with path - relative to snakemake directory
+REF_FILE_FOLDER: ""
 
 SAMPLES:   #sample prefix (exclude R1 and R2 in the sample name)
-  -      #e.g - SRR1552444
+-   #e.g - SRR1552444
+
+ISPAIRED: ""  
 
 SALMON_INDEX_FOLDER: "" #add relative path
 
 #DESeq analysis
 RMARKDOWN: "" #add full path
-
 METADATAFILE: "" #add full path
-
 HTMLREPORT: "" #add full path
 
 

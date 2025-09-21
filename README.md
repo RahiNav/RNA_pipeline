@@ -4,18 +4,18 @@
 - Conda, Snakemake, R
 
 ## Description: 
-- Runs end-to-end RNA-seq pipeline and produces quant.sf files from fastq files and runs DESeq2 pipeline on the quant files to produce analysis report which inlcude MA plots, PCA plot, heatmaps and KEGG and GO enrichment in form of HTML. It also produces a list of top 3 genes differentially expressed for each contrast (control vs condition 1.. and so on) based on the metadata provided.
+- This pipeline performs end-to-end RNA-seq analysis, starting from raw FASTQ files. It generates quant.sf files using Salmon and then runs a DESeq2 workflow on the quantifications to produce a comprehensive analysis report. The report, delivered in HTML format, includes MA plots, PCA plots, heatmaps, and KEGG/GO enrichment analyses. In addition, the pipeline extracts and reports the top three differentially expressed genes for each contrast (e.g., control vs. condition 1, condition 2, etc.), based on the metadata provided and generates QC reports using fastqc and multiqc software. All steps (including DESEQ2) is run in Snakemake. The user only needs to provide 1) complete metadata file e.g file in ![samples.xlsx](/metadata/samples_example.xlsx), 2)required raw and reference files and 3) updated ![config.yaml] file to reflect the names and path of the files. The results will be generated in /results folder (see organiation below) and the DESeq2 analysis and KEGG and GO enrichement results are produced in a HTML report e.g report can be viewed ![here](/results/deseq/deseq_analysis_example.html)
 
-## Pipeline Overview:
-fastq > fastqc > multiqc > quant expression > DESeq2 > multiple plots (PCA, heatmap, MA) + GO/KEGG enrichment
-
-## Results structure:
+### Results structure:
 - /results
-    - /fastqc 
-    - /multiqc
+    - /fastqc  
+    - /multiqc 
     - /salmon
     - /ora
     - /deseq
+
+## Pipeline Overview:
+![Overview](/images/Overview.png)
 
 ## Steps:
 
@@ -40,7 +40,7 @@ pyenv local <virtual envs name>
 > pyenv can be installed from [here](https://github.com/pyenv/pyenv/blob/master/README.md#installation)
 
 
-### 4. Create environment.yaml file
+### 4. Editing existing environment.yaml file (if needed).
 ```
 vi environment.yaml 
 ```
@@ -78,6 +78,13 @@ conda activate {enviroment_name}  #snakemake-test-1
 > [!Note]
 > To generate Salmon index file please use the bash script from /generate_references
 
+### 10. Update config file
+
+```
+vi config.yaml
+```
+> Update the necessary path for required paths and add sample names. 
+
 ### 10. Do a dry-run
 ```
 snakemake -n
@@ -89,7 +96,7 @@ snakemake -n
 snakemake --cores <no. of cores> #e.g. snakemake --cores 6
 ```
 > [!Note]
-> If running on local system as oppose to cloud don't use higher cores. For e.g if your local system has 12 cores, specify 6 cores to avaoi overloading your system and crashing. However to use all available cores you can use --cores "all"
+> If running on local system as oppose to cloud don't use higher number cores. For e.g if your local system has 12 cores, specify 6 cores to avoid overloading your system and crashing. To use all available cores use --cores "all"
 
 ## Other helpful commands
 ### To create a dag of the snakemake workflow. 
@@ -106,6 +113,7 @@ snakemake --allowed-rules {rulename}
 snakemake --rerun-triggers mtime
 #useful when you have updated metadata of the snakefile but want to avoid rerunning the rules
 ```
-
+### Sources:
+> https://hbctraining.github.io/Intro-to-rnaseq-fasrc-salmon-flipped/schedule/links-to-lessons.html
 
 
