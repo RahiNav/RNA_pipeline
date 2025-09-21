@@ -1,4 +1,5 @@
 # Downstream end-to-end RNA-seq analysis pipeline (expression quantification + differential expression)
+### Currently accepts only single end fastq files.
 
 ## Software:
 - Conda, Snakemake, R
@@ -114,7 +115,7 @@ snakemake --rerun-triggers mtime
 #useful when you have updated metadata of the snakefile but want to avoid rerunning the rules
 ```
 ### Sources:
-> https://hbctraining.github.io/Intro-to-rnaseq-fasrc-salmon-flipped/schedule/links-to-lessons.html
-> https://snakemake.readthedocs.io/en/stable/tutorial/tutorial.html
+- https://hbctraining.github.io/Intro-to-rnaseq-fasrc-salmon-flipped/schedule/links-to-lessons.html
+- https://snakemake.readthedocs.io/en/stable/tutorial/tutorial.html
 
 
