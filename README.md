@@ -1,11 +1,10 @@
 # Downstream end-to-end RNA-seq analysis pipeline (expression quantification + differential expression)
-### Currently accepts only single end fastq files.
 
 ## Software:
 - Conda, Snakemake, R
 
 ## Description: 
-- This pipeline performs end-to-end RNA-seq analysis, starting from raw FASTQ files. It generates quant.sf files using Salmon and then runs a DESeq2 workflow on the quantifications to produce a comprehensive analysis report. The report, delivered in HTML format, includes MA plots, PCA plots, heatmaps, and KEGG/GO enrichment analyses. In addition, the pipeline extracts and reports the top three differentially expressed genes for each contrast (e.g., control vs. condition 1, condition 2, etc.). All steps (including DESeq2) is run in Snakemake. The user only needs to provide 1) complete metadata file e.g file in [samples.xlsx](/metadata/samples_example.xlsx), 2)required raw and reference files and 3) updated [config.yaml] file to reflect the names and path of the files. The results will be generated in /results folder (see organization below) and the DESeq2 analysis and KEGG and GO enrichement results are produced in a HTML report. Example report can be viewed [here](/results/deseq/deseq_analysis_example.html)
+- This pipeline performs end-to-end RNA-seq analysis, starting from raw FASTQ files. It generates quant.sf files using Salmon and then runs a DESeq2 workflow on the quantifications to produce a comprehensive analysis report. The report, delivered in HTML format, includes MA plots, PCA plots, heatmaps, and KEGG/GO enrichment analyses. In addition, the pipeline extracts and reports the top three differentially expressed genes for each contrast (e.g., control vs. condition 1, condition 2, etc.). All steps (including DESeq2) is run in Snakemake. The user only needs to provide 1) complete metadata file e.g file in [samples.xlsx](/metadata/samples_example.xlsx), 2)required raw and reference files and 3) updated [config.yaml] file to reflect the names and path of the files. The results will be generated in /results folder (see organization below) and the DESeq2 analysis and KEGG and GO enrichement results are produced in a HTML report. Example report can be viewed [here](/results/deseq/deseq_analysis_example.html) generated from study [PMID:25730472](https://pubmed.ncbi.nlm.nih.gov/25730472/)
 
 ### Results structure:
 - /results
@@ -74,11 +73,20 @@ conda activate {enviroment_name}  #snakemake-test-1
 
 - Metadata file: A excel file with metadata labelled as metadata.xlsx in metadata/ folder. Example of metadata file added [here](/metadata/samples_example.xlsx)
 - Raw files : Paired or single fastq files in raw_files/
+```
+#To download fastq files from SRA, you can use script scripts/download_sra_files.sh
+$/scripts bash download_sra_files.sh <sraAcc.txt> </raw_files> 
+#sraAcc : should be text file with one sra accession per one line
+#raw_files : folder in the /RNA_pipeline
+```
 - Reference files : gtf file and transcript file in ref_files/
 - Intermediate file: Salmon index file in ref_files/
-> [!Note]
-> To generate Salmon index file please use the bash script from /generate_references
-
+```
+#To generate Salmon index file you can use the script from scripts/salmon_index.sh
+$/scripts bash salmon_index.sh <transcript_file> <salmon_index_prefix>
+#transcript_file : cdna file
+#salmon_index_prefix: prefix for salmon index e.g salmon_index_mm10
+```
 ### 10. Update config file
 
 ```
@@ -86,13 +94,18 @@ vi config.yaml
 ```
 > Update the necessary path for required paths and add sample names. 
 
-### 10. Do a dry-run
+### 11. Use the correct Snakefile
+
+- If you have paired fastq files, replace the RNA_pipeline/Snakefile with paired_fastq/Snakefile in the parent folder
+- If you have single end fast file, don't need to change anything
+
+### 12. Do a dry-run
 ```
 snakemake -n
 ```   
 > Correct any errors or open issues for any format errors
 
-### 11. Run Snakemake 
+### 13. Run Snakemake 
 ```
 snakemake --cores <no. of cores> #e.g. snakemake --cores 6
 ```

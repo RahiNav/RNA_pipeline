@@ -4,6 +4,8 @@ channels:
     - defaults
 dependencies:
     - snakemake-minimal >=8.4.4
+    - sra-tools
+    - pigz
     - jinja2
     - fastqc
     - star
