@@ -1,5 +1,4 @@
 # Downstream end-to-end RNA-seq analysis pipeline (expression quantification + differential expression)
-### Currently accepts only single end fastq files.
 
 ## Software:
 - Conda, Snakemake, R
